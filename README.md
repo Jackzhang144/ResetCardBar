@@ -101,7 +101,9 @@ open /Applications/ResetCardBar.app
 
 ## 记录与隐私
 
-使用记录位于 `~/Library/Application Support/ResetCardBar/state.json`，偏好域为 `local.jackzhang.ResetCardBar`。记录包含账号标识、卡片标识、到期时间和未确认请求，不包含登录凭据。登录由 Codex CLI 管理。
+使用记录位于当前 macOS 用户自己的 `~/Library/Application Support/ResetCardBar/state.json`。记录包含账号标识、卡片标识、到期时间和未确认请求，不包含登录凭据；认证由官方 Codex 组件（本机 CLI 或内置 App Server）管理。
+
+`local.jackzhang.ResetCardBar` 是 1.5.0 及此前版本的固定应用标识（Bundle ID），同时用作偏好域，其中的 `jackzhang` 是开发者命名，不是运行用户的用户名。所有用户安装同一应用标识，但数据和偏好分别保存在各自的 macOS 用户目录。该名称保留用于已有安装的偏好与更新兼容，后续若调整为发布者域名格式，需要同时实现迁移。
 
 不要删除记录文件来解决重试异常，否则会丢失未确认请求的标识。不要提交真实账号响应、记录文件、登录凭据或调试日志。
 
