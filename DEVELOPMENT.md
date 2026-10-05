@@ -6,7 +6,7 @@
 
 构建使用 Swift 5 语言模式，deployment target 为 macOS 13，默认本机架构。可用 `RESETCARDBAR_ARCH=arm64 make build` 指定架构；构建其他架构并不证明该架构已经运行验证。
 
-完整 Xcode 的 `actool` 用于图标资源目录编译；否则使用 `.icns`。项目当前没有 Swift Package 或 `.xcodeproj`，避免同时引入多个未维护的构建入口。
+完整 Xcode 的 `actool` 用于图标资源目录编译；否则使用 `.icns`。Sparkle 2.10.0 下载后验证固定 SHA-256，框架保留官方签名并嵌入应用。项目当前没有 Swift Package 或 `.xcodeproj`，避免同时引入多个未维护的构建入口。
 
 ## 修改与测试
 
@@ -50,3 +50,13 @@ git diff --check
 ```
 
 skill 定义保持简短，项目状态与构建细节以当前源码和这些文档为准，避免复制整套说明产生漂移。
+
+## 发布与更新开发
+
+仓库位于 `~/Code/ResetCardBar`，公开远端为 `Jackzhang144/ResetCardBar`。更新实现为 `src/Updates.swift`，浏览器登录为 `src/Login.swift`。
+
+`RESETCARDBAR_ARCH=universal RESETCARDBAR_BUNDLE_CODEX=1 make test` 构建完整发布包。后端版本与摘要由 `resources/codex-runtime.json` 固定；只能通过核对官方发布及重新验证接口来升级。
+
+`make package` 仍只生成本地 ZIP；`scripts/release.sh` 额外生成 DMG 和签名 appcast。向 GitHub 推送版本标签会触发真正发布，不把它当成普通测试命令。
+
+自动更新必须保留公钥、稳定 HTTPS feed、递增 CFBundleVersion 以及重置卡操作的安全重启约束。失败回调需要恢复监控，不能留下暂停状态。更新流程见 [RELEASING.md](docs/RELEASING.md)。

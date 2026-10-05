@@ -4,6 +4,7 @@ import Combine
 import Network
 import IOKit.pwr_mgt
 import Darwin
+import Sparkle
 import UserNotifications
 import ServiceManagement
 
@@ -35,9 +36,10 @@ final class RPC: ResetRPC {
     var responses: [Int: [String: Any]] = [:]
     var buffer = Data(), nextID = 0
     var ended = false
+    var loginCompletion: [String: Any]?
     init(path: String) throws {
         process.executableURL = URL(fileURLWithPath: path)
-        process.arguments = ["app-server"]
+        process.arguments = URL(fileURLWithPath: path).lastPathComponent == "codex-app-server" ? [] : ["app-server"]
         var env = ProcessInfo.processInfo.environment
         env["PATH"] = "/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin:" + (env["PATH"] ?? "")
         process.environment = env
@@ -52,9 +54,9 @@ final class RPC: ResetRPC {
             while let newline = self.buffer.firstIndex(of: 10) {
                 let line = self.buffer.prefix(upTo: newline)
                 self.buffer.removeSubrange(...newline)
-                if let message = try? JSONSerialization.jsonObject(with: line) as? [String: Any],
-                   let id = message["id"] as? Int {
-                    self.responses[id] = message; self.semaphore.signal()
+                if let message = try? JSONSerialization.jsonObject(with: line) as? [String: Any] {
+                    if let id = message["id"] as? Int { self.responses[id] = message; self.semaphore.signal() }
+                    else if message["method"] as? String == "account/login/completed" { self.loginCompletion = message["params"] as? [String: Any] }
                 }
             }
             self.lock.unlock()
@@ -64,6 +66,10 @@ final class RPC: ResetRPC {
             _ = try call("initialize", ["clientInfo": ["name": "reset_card_bar", "version": "1.0.0"], "capabilities": ["experimentalApi": true]])
             try send(["method": "initialized"])
         } catch { close(); throw error }
+    }
+    func takeLoginCompletion() -> [String: Any]? {
+        lock.lock(); defer { lock.unlock() }
+        let result = loginCompletion; loginCompletion = nil; return result
     }
     func send(_ object: [String: Any]) throws {
         var bytes = try JSONSerialization.data(withJSONObject: object); bytes.append(10)
@@ -107,8 +113,15 @@ final class App: NSObject, NSApplicationDelegate, UNUserNotificationCenterDelega
     var previewWindow: NSWindow?
     var hasError = false
     var showSettings = false
+    var showUpdates = false
+    var loginSession: LoginSession?
+    var loginMessage = "沿用本机 Codex 登录，也可在此登录"
     var cardPage = 0
     var activeAccount: String?
+    var updaterController: SPUStandardUpdaterController?
+    var updateObservation: NSKeyValueObservation?
+    var updateMessage = "每小时自动检查，下载后安装并重启"
+    var updateRestartPending = false
     var monitor: Monitor?
     var monitorError: String?
     var notificationWarning: String?
@@ -159,11 +172,18 @@ final class App: NSObject, NSApplicationDelegate, UNUserNotificationCenterDelega
             NSApp.activate(ignoringOtherApps: true)
         }
         if let account = monitor?.state.account { scheduleReminders(account: account) }
+        startUpdates()
         render(); refresh()
 
     }
     func executable() throws -> String {
-        let candidates = [defaults.string(forKey: "codexPath") ?? "", "/opt/homebrew/bin/codex", "/usr/local/bin/codex", "/Applications/Codex.app/Contents/Resources/codex"]
+        #if arch(arm64)
+        let architecture = "arm64"
+        #else
+        let architecture = "x86_64"
+        #endif
+        let bundled = Bundle.main.bundleURL.appendingPathComponent("Contents/Resources/Codex/" + architecture + "/bin/codex-app-server").path
+        let candidates = [defaults.string(forKey: "codexPath") ?? "", "/opt/homebrew/bin/codex", "/usr/local/bin/codex", "/Applications/Codex.app/Contents/Resources/codex", "/Applications/ChatGPT.app/Contents/Resources/codex", bundled]
         guard let path = candidates.first(where: { !$0.isEmpty && FileManager.default.isExecutableFile(atPath: $0) }) else {
             throw Failure(message: "找不到 Codex，请在菜单中选择 codex 程序")
         }
@@ -185,7 +205,7 @@ final class App: NSObject, NSApplicationDelegate, UNUserNotificationCenterDelega
         } else if !urgent && idleAssertion != 0 { IOPMAssertionRelease(idleAssertion); idleAssertion = 0 }
     }
     @objc func refresh() {
-        guard !busy else { return }; busy = true; objectWillChange.send()
+        guard !busy && !updateRestartPending else { return }; busy = true; objectWillChange.send()
         timer?.invalidate()
         checkNotifications()
         let threshold = minutes
@@ -344,7 +364,7 @@ final class App: NSObject, NSApplicationDelegate, UNUserNotificationCenterDelega
         alert.runModal()
     }
     func applicationWillTerminate(_ notification: Notification) {
-        timer?.invalidate(); network.cancel()
+        timer?.invalidate(); network.cancel(); loginSession?.cancel()
         if idleAssertion != 0 { IOPMAssertionRelease(idleAssertion) }
         if let activity { ProcessInfo.processInfo.endActivity(activity) }
     }
@@ -386,7 +406,9 @@ struct Dashboard: View {
                         .frame(width: 30, height: 30).background(Color.primary.opacity(0.045), in: RoundedRectangle(cornerRadius: 9))
                 }.buttonStyle(.plain).disabled(app.busy).help("立即刷新")
             }.padding(.horizontal, 20).padding(.top, 16).padding(.bottom, 12)
-            if app.showSettings {
+            if app.showUpdates {
+                updatesPanel
+            } else if app.showSettings {
                 settingsPanel
             } else {
                 VStack(alignment: .leading, spacing: 10) {
@@ -470,7 +492,7 @@ struct Dashboard: View {
                 Circle().fill(app.hasError ? Color.orange : green).frame(width: 5, height: 5)
                 Text(app.lastRefresh.map { "更新于 " + $0.formatted(date: .omitted, time: .shortened) } ?? "正在连接…").font(.system(size: 10)).foregroundStyle(.secondary)
                 Spacer()
-                Button { app.showSettings.toggle(); app.objectWillChange.send() } label: { Image(systemName: app.showSettings ? "rectangle.stack" : "gearshape") }.help(app.showSettings ? "返回卡片" : "更多设置")
+                Button { app.showUpdates = false; app.showSettings.toggle(); app.objectWillChange.send() } label: { Image(systemName: app.showSettings ? "rectangle.stack" : "gearshape") }.help(app.showSettings ? "返回卡片" : "更多设置")
                 Button { app.help() } label: { Image(systemName: "questionmark.circle") }.help("使用说明")
                 Button { app.quit() } label: { Image(systemName: "power") }.help("退出")
             }.buttonStyle(.plain).foregroundStyle(.secondary).padding(.horizontal, 20).padding(.vertical, 13)
@@ -489,6 +511,11 @@ struct Dashboard: View {
             VStack(alignment: .leading, spacing: 16) {
                 Toggle("登录时启动", isOn: Binding(get: { SMAppService.mainApp.status == .enabled }, set: { _ in app.toggleLogin() })).toggleStyle(.switch).controlSize(.small)
                 Divider()
+                Button(app.loginSession == nil ? "登录 / 切换 ChatGPT 账号…" : "取消登录") {
+                    if app.loginSession == nil { app.login() } else { app.cancelLogin() }
+                }.buttonStyle(.borderless)
+                Text(app.loginMessage).font(.system(size: 10)).foregroundStyle(.secondary).lineLimit(2)
+                Button("应用更新…") { app.showUpdates = true; app.objectWillChange.send() }.buttonStyle(.borderless)
                 Button("发送测试通知") { app.testNotification() }.buttonStyle(.borderless)
                 Button("选择 Codex 程序…") { app.chooseCodex() }.buttonStyle(.borderless)
             }.font(.system(size: 12)).padding(16).cardSurface()
@@ -501,6 +528,27 @@ struct Dashboard: View {
                 Label(last, systemImage: "checkmark.circle").font(.system(size: 11)).foregroundStyle(.secondary).padding(14).cardSurface()
             }
             if let warning = app.notificationWarning { Label(warning, systemImage: "bell.slash").font(.system(size: 11)).foregroundStyle(.orange).fixedSize(horizontal: false, vertical: true).padding(12).cardSurface() }
+            Spacer(minLength: 0)
+        }.padding(.horizontal, 20).padding(.bottom, 16)
+    }
+    var updatesPanel: some View {
+        VStack(alignment: .leading, spacing: 14) {
+            Button { app.showUpdates = false; app.objectWillChange.send() } label: { Label("返回设置", systemImage: "chevron.left") }.buttonStyle(.borderless)
+            VStack(alignment: .leading, spacing: 10) {
+                HStack {
+                    Text("应用更新").font(.system(size: 12, weight: .semibold))
+                    Spacer()
+                    Text(Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "")
+                        .font(.system(size: 10)).foregroundStyle(.secondary)
+                }
+                Toggle("自动检查更新", isOn: Binding(get: { app.updaterController?.updater.automaticallyChecksForUpdates ?? false }, set: { app.updaterController?.updater.automaticallyChecksForUpdates = $0; app.objectWillChange.send() })).toggleStyle(.switch).controlSize(.small)
+                Toggle("自动安装并重启", isOn: Binding(get: { app.updaterController?.updater.automaticallyDownloadsUpdates ?? false }, set: { app.updaterController?.updater.automaticallyDownloadsUpdates = $0; app.objectWillChange.send() })).toggleStyle(.switch).controlSize(.small)
+                Button("检查更新…") { app.checkForUpdates() }.buttonStyle(.borderless)
+                    .disabled(!(app.updaterController?.updater.canCheckForUpdates ?? false))
+                Text(app.updateMessage).font(.system(size: 10)).foregroundStyle(.secondary).lineLimit(2).help(app.updateMessage)
+            }.font(.system(size: 11)).padding(14).cardSurface()
+            Text("更新包经过签名验证。下载完成后等待当前重置卡操作结束，再自动安装并重启；最后两分钟优先处理卡片。安装位置权限不足时，系统可能需要管理员授权。")
+                .font(.system(size: 11)).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true).padding(14).cardSurface()
             Spacer(minLength: 0)
         }.padding(.horizontal, 20).padding(.bottom, 16)
     }
@@ -572,7 +620,7 @@ if CommandLine.arguments.contains("--monitor-tests") {
     signal(SIGPIPE, SIG_IGN)
     let directory = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask)[0].appendingPathComponent("ResetCardBar")
     do { try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true) } catch { print(error); exit(1) }
-    let lockFD = open(directory.appendingPathComponent("instance.lock").path, O_CREAT | O_RDWR, S_IRUSR | S_IWUSR)
+    let lockFD = open(directory.appendingPathComponent("instance.lock").path, O_CREAT | O_RDWR | O_CLOEXEC, S_IRUSR | S_IWUSR)
     guard lockFD >= 0, flock(lockFD, LOCK_EX | LOCK_NB) == 0 else { print("ResetCardBar is already running or instance lock unavailable"); exit(0) }
     let app = NSApplication.shared
     let delegate = App(); app.delegate = delegate

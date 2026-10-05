@@ -1,14 +1,40 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
-<plist version="1.0"><dict>
-<key>CFBundleIdentifier</key><string>local.jackzhang.ResetCardBar</string>
-<key>CFBundleName</key><string>ResetCardBar</string>
-<key>CFBundleDisplayName</key><string>Codex 重置卡</string>
-<key>CFBundleExecutable</key><string>ResetCardBar</string>
-<key>CFBundleIconFile</key><string>AppIcon.icns</string>
-<key>CFBundlePackageType</key><string>APPL</string>
-<key>CFBundleShortVersionString</key><string>1.4.0</string>
-<key>CFBundleVersion</key><string>6</string>
-<key>LSUIElement</key><true/>
-<key>LSMinimumSystemVersion</key><string>13.0</string>
-</dict></plist>
+<plist version="1.0">
+<dict>
+	<key>CFBundleIdentifier</key>
+	<string>local.jackzhang.ResetCardBar</string>
+	<key>CFBundleName</key>
+	<string>ResetCardBar</string>
+	<key>CFBundleDisplayName</key>
+	<string>Codex 重置卡</string>
+	<key>CFBundleExecutable</key>
+	<string>ResetCardBar</string>
+	<key>CFBundleIconFile</key>
+	<string>AppIcon.icns</string>
+	<key>CFBundlePackageType</key>
+	<string>APPL</string>
+	<key>CFBundleShortVersionString</key>
+	<string>1.5.0</string>
+	<key>CFBundleVersion</key>
+	<string>7</string>
+	<key>LSUIElement</key>
+	<true/>
+	<key>LSMinimumSystemVersion</key>
+	<string>13.0</string>
+	<key>SUFeedURL</key>
+	<string>https://github.com/Jackzhang144/ResetCardBar/releases/latest/download/appcast.xml</string>
+	<key>SUPublicEDKey</key>
+	<string>hDZVM6mab7e8pKo3U5YaC5yZeQ/p7m2r6Ys2M7dQj/Y=</string>
+	<key>SUEnableAutomaticChecks</key>
+	<true/>
+	<key>SUAutomaticallyUpdate</key>
+	<true/>
+	<key>SUScheduledCheckInterval</key>
+	<integer>3600</integer>
+	<key>SUEnableSystemProfiling</key>
+	<false/>
+	<key>SUVerifyUpdateBeforeExtraction</key>
+	<true/>
+</dict>
+</plist>

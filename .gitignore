@@ -11,3 +11,8 @@ __pycache__/
 state.json
 instance.lock
 auth.json
+
+/work/
+*.key
+*.pem
+*.p12

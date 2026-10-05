@@ -1,6 +1,23 @@
 # ResetCardBar · Codex 重置卡助手
 
-一个轻量的 macOS 菜单栏应用，用于查看 Codex 重置卡的到期时间、提前提醒，并在临近到期时自动尝试使用。使用本机 Codex CLI 登录的 ChatGPT 账号，无需填写 API Key。
+一个原生 macOS 菜单栏应用，用于查看 Codex 重置卡到期时间、提前提醒，并在临近到期时自动尝试使用。发布包内置官方 Codex App Server，可在应用内通过浏览器登录 ChatGPT；已有 Codex CLI 的用户可沿用本机账号，无需填写 API Key。
+
+[下载最新版本](https://github.com/Jackzhang144/ResetCardBar/releases/latest) · [GitHub Actions](https://github.com/Jackzhang144/ResetCardBar/actions)
+
+## 下载安装
+
+1. 从 Release 下载通用 DMG，适用于 Apple Silicon 和 Intel、macOS 13 及以上。
+2. 打开 DMG，将 ResetCardBar 拖入 Applications，再从 Applications 打开。
+3. 首次打开如果被 macOS 阻止，通过「系统设置 → 隐私与安全性 → 仍要打开」按提示允许。当前版本未经过 Developer ID 签名与公证，不需要关闭 Gatekeeper。
+4. 在设置页点击「登录 / 切换 ChatGPT 账号」，允许通知，并按需开启登录启动。
+
+无需安装开发工具或 Homebrew。发布包含两个架构的官方运行组件，因此下载包较大。此应用是独立工具，不是 OpenAI 官方产品。
+
+## 自动更新
+
+设置 → 应用更新，可手动检查，也可分别控制「自动检查更新」和「自动安装并重启」。默认每小时自动检查，下载完成后验证 EdDSA 签名并安装重启。当前卡片操作未完成或卡片处于最后两分钟时，更新会等待。
+
+更新异常不会中断重置卡监控。应用需安装在可写位置；权限不足时，系统可能要求管理员授权。首次安装的 1.4.x 版本没有更新功能，需要手动安装一次 1.5.0。
 
 ## 实际截图
 
@@ -20,6 +37,7 @@
 - 原子保存使用记录；网络响应丢失后复用幂等标识确认结果。
 - 网络恢复和系统唤醒后补查，临近到期时阻止空闲睡眠。
 - 支持登录启动、通知测试，以及通知权限异常提示。
+- 内置登录、签名更新与安全重启，提供 DMG / ZIP 通用发布包。
 
 ## 构建与运行
 
@@ -30,7 +48,15 @@ make build
 make test
 ```
 
-应用生成在 `build/ResetCardBar.app`，默认构建本机架构，使用本地临时签名。开发入口是命令行构建，仓库没有 Xcode 工程文件。
+应用生成在 `build/ResetCardBar.app`，默认构建本机架构，使用本地临时签名。Sparkle 固定版本及 SHA-256 下载校验。开发入口是命令行构建，仓库没有 Xcode 工程文件。
+
+完整发布构建（同时内置两个架构的官方后端）：
+
+```sh
+RESETCARDBAR_ARCH=universal RESETCARDBAR_BUNDLE_CODEX=1 make test
+```
+
+普通开发构建不重新打包后端，可使用本机 Codex CLI；使用过完整发布构建时，已有后端可能留在本地构建目录。
 
 先使用 ChatGPT 账号登录 Codex CLI：
 
@@ -48,7 +74,7 @@ open /Applications/ResetCardBar.app
 
 替换安装版前，从菜单退出正在运行的旧版本。允许通知后，在底部齿轮设置页发送测试通知，并按需开启登录启动。
 
-默认查找 `/opt/homebrew/bin/codex`、`/usr/local/bin/codex`、`/Applications/Codex.app/Contents/Resources/codex`；也可在设置页手动选择。CLI 和桌面应用登录账号不同时，以 CLI 当前账号为准。
+默认先查找用户选择的程序和本机 CLI，其次使用发布包内置的 App Server；也可在设置页手动选择。CLI 和桌面应用登录账号不同时，以选中的后端登录账号为准。
 
 ## 开发命令
 
@@ -77,6 +103,13 @@ open /Applications/ResetCardBar.app
 
 不要删除记录文件来解决重试异常，否则会丢失未确认请求的标识。不要提交真实账号响应、记录文件、登录凭据或调试日志。
 
+## CI / CD
+
+- `main` 的推送和 PR 在 Apple Silicon、Intel runner 上构建并运行离线测试。
+- `v*` 标签先验证两种架构，再构建包含后端的通用包，生成 DMG / ZIP、签名 appcast 和 SHA256SUMS。
+- 所有文件上传到草稿 Release 后才公开；已公开版本不被重复覆盖。
+- `SPARKLE_PRIVATE_KEY` 仅存于本机钥匙串及仓库的 GitHub Actions secret；公钥写入应用。维护者发布流程见 [docs/RELEASING.md](docs/RELEASING.md)。
+
 ## 仓库与 Codex
 
 ```text
@@ -93,3 +126,7 @@ build/、dist/          本地生成产物，不纳入 Git
 Codex 入口为 [AGENTS.md](AGENTS.md)。仓库 skill 位于 [.agents/skills/reset-card-bar-dev/SKILL.md](.agents/skills/reset-card-bar-dev/SKILL.md)，在本仓库启动 Codex 后可用 `$reset-card-bar-dev` 调用，目录采用[官方 Codex skill 规范](https://learn.chatgpt.com/docs/build-skills)。
 
 更多说明：[架构](docs/ARCHITECTURE.md) · [可靠性](docs/RELIABILITY.md) · [版本记录](CHANGELOG.md) · [官方 App Server 接口](https://learn.chatgpt.com/docs/app-server)
+
+## 许可证
+
+本项目采用 [MIT](LICENSE)。Sparkle 和内置 Codex 组件保留各自许可证；详见 [第三方组件](docs/THIRD_PARTY.md)。

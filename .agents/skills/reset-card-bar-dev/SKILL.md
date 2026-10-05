@@ -11,6 +11,7 @@ Work within this repository. Read its root `AGENTS.md` and the relevant source b
 
 - **UI:** keep rounded cards, a main panel without vertical scrolling, and a separate settings page. Paging affects display only. Use the existing `Dashboard`; validate the real running interface when layout changes. Screenshots must be actual app pixels, with the preview-window context disclosed.
 - **Monitoring/recovery:** work through `src/Monitor.swift` and the serial queue in `src/main.swift`. Add targeted fake-service assertions in `tests/MonitorTests.swift` for changed failure paths. Transport changes use `tests/test_rpc.py` and the synthetic subprocess fixture.
+- **Updates/releases:** read `docs/RELEASING.md`. Preserve the signing public key, incrementing build number, pinned dependency hashes, and safe restart during redemption. Use `src/Updates.swift` rather than a custom downloaded installer script. A published version is immutable.
 - **Build/package:** use `make build`, `make test`, and `make package`. Version metadata lives in `resources/Info.plist`; generated output is `build/` or `dist/`. Packaging does not authorize installation, remote publishing, or live redemption testing.
 
 ## Preserve the recovery contract

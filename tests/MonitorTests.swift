@@ -128,5 +128,9 @@ func runMonitorTests() throws {
         successfulID = id; return ["outcome": "reset"]
     }, enabled: { true }, minutes: 60)
     try check(successfulID == "card2" && isolated.failed, "one-card failure cannot starve the next card")
+    try check(!UpdatePolicy.mayRestart(busy: true, auto: true, cards: [], now: 10000), "update cannot interrupt RPC")
+    try check(!UpdatePolicy.mayRestart(busy: false, auto: true, cards: [Card(row("urgent", 10100))!], now: 10000), "update yields to final-two-minute redemption")
+    try check(UpdatePolicy.mayRestart(busy: false, auto: true, cards: [Card(row("safe", 10600))!], now: 10000), "update may restart outside final-two-minute window")
+    try check(UpdatePolicy.mayRestart(busy: false, auto: true, cards: [Card(row("expired", 9999))!], now: 10000), "expired card cannot indefinitely block updates")
     print("PASS: \(passed) monitor assertions (mock service only; no real credits consumed)")
 }

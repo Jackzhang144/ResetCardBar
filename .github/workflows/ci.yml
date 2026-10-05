@@ -1,0 +1,31 @@
+name: CI
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_call:
+permissions:
+  contents: read
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  test:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [macos-14, macos-15-intel]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build and test
+        run: make test
+      - name: Check whitespace
+        run: git diff --check
+      - name: Package test artifact
+        run: ./scripts/package.sh
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ResetCardBar-${{ matrix.os }}
+          path: dist/*.zip
+          retention-days: 7
