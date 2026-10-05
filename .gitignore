@@ -1,0 +1,13 @@
+/build/
+/dist/
+.DS_Store
+__pycache__/
+*.pyc
+.env
+.env.*
+*.log
+*.dSYM/
+# Runtime/account data never belongs in this repository.
+state.json
+instance.lock
+auth.json

@@ -1,0 +1,24 @@
+Codex 重置卡助手 1.4.0
+
+当前安装位置：/Applications/ResetCardBar.app。
+顶部菜单栏显示重置卡数量，点击打开圆角卡片面板。
+每页两张卡片，多余卡片分页查看；后台检查全部已知卡片。
+自动使用默认开启，已按用户选择改为到期前 60 分钟；可选 10/30/60 分钟。
+底部齿轮进入独立设置页，可检查登录启动、发送测试通知与选择 Codex CLI。
+
+本版补充异常恢复、分阶段提醒、临近到期提高检查频率、空闲睡眠保护和重复实例保护。
+监控逻辑与验证细节见「异常处理检查.txt」。
+
+依赖已安装且已使用 ChatGPT 账号登录的 Codex CLI（codex login）。
+显示的是 CLI 当前账号的卡。缺少账号标识或使用记录损坏时会暂停自动使用并提示。
+必须保持应用运行、Mac 醒着并联网。应用不是独立后台守护服务；合盖、关机或崩溃期间不会使用卡片。
+系统提醒需要通知权限；提醒已安排后可在应用退出期间由 macOS 管理。
+
+记录保存在 ~/Library/Application Support/ResetCardBar/state.json。
+请勿删除这份记录来尝试解决使用异常，以免丢失未确认请求的标识。
+图标问题不再继续修改。
+
+源码：main.swift（界面、RPC、通知及调度）、Monitor.swift（持久化与使用逻辑）、MonitorTests.swift（模拟测试）。
+./build.sh 编译与运行检查。需要 Xcode Command Line Tools；若安装完整 Xcode，会额外编译图标资源目录。
+当前编译版本用于本机 Apple Silicon，使用本地临时签名。
+官方接口：https://learn.chatgpt.com/docs/app-server

@@ -1,0 +1,5 @@
+使用内置 image_gen 工具生成，模型版本由工具管理，调用参数不支持指定模型。
+最终提示词：
+Use case: logo-brand. Create one polished macOS application icon for a utility called ResetCardBar that tracks Codex quota reset cards. Square 1024x1024 composition. A large blue rounded-square squircle tile centered with standard macOS icon safe margins (tile spans about 82% of canvas), subtly luminous cobalt to periwinkle gradient, softly beveled edge and restrained dimensional depth. On the tile, a pair of simple stacked rounded rectangular white cards and a bold clean clockwise circular refresh arrow integrated on the front card. Clear distinctive silhouette readable at 32px. Refined Apple desktop app aesthetic, gentle studio highlight upper left, minimal elegant balanced composition, white mark, no text, no letters, no numbers, no logos, no watermark, no extra objects, no mockup. Outside the rounded-square tile genuinely transparent alpha, preserve clean rounded corners, no opaque outer background.
+原始输出：1254 × 1254，透明 PNG。
+打包：使用 sips 生成 macOS 标准尺寸，iconutil 转换为 AppIcon.icns。
