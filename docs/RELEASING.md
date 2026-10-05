@@ -41,3 +41,14 @@ Sparkle 2.10.0 的版本和摘要固定在 `scripts/fetch-sparkle.sh`。Codex Ap
 目前没有 Developer ID 证书，也未公证。首次安装按 macOS 的「仍要打开」提示由用户允许；不能关闭 Gatekeeper 或替用户绕过安全警告。更新可能需要安装位置的写权限或管理员授权。
 
 将来接入 Developer ID 与 notarization 时，还需正确签署 Sparkle helper 和内置运行组件，再公证最终安装包；EdDSA 更新签名仍需保留。
+
+## 1.5.0 实际验证记录（2026-10-05）
+
+- main CI 的 Apple Silicon 与 Intel 原生 job 均成功。
+- v1.5.0 Release workflow 的两个验证 job、通用构建、更新签名校验与发布均成功。
+- 公开 appcast 返回构建号 7，DMG / ZIP / appcast / SHA256SUMS 四个资产可下载。
+- 用本地可写目录内的受控旧版本（构建号 6）验证：应用自动从公开 Release 下载，验证签名，替换为构建号 7，安装器正常退出，应用以新进程重启。未手动点击安装，也未消费真实卡片。
+- 升级后仍为自动使用开启、提前 60 分钟，通知已授权且有 8 个系统到期提醒。
+- 最后恢复 /Applications 中的 GitHub 发布版，更新页显示「已是最新版本」。
+
+这个测试验证了本机可写位置的自动更新。没有宣称在所有用户权限、合盖、关机、首次 Gatekeeper 拦截或网络环境下都无需用户操作。

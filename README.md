@@ -27,6 +27,8 @@
 | --- | --- |
 | <img src="docs/screenshots/dashboard.jpg" width="340" alt="实际运行的重置卡面板，显示两张卡和提前60分钟自动使用设置"> | <img src="docs/screenshots/settings.jpg" width="340" alt="实际运行的独立设置页，显示登录启动和通知测试功能"> |
 
+<img src="docs/screenshots/updates.jpg" width="340" alt="实际运行的更新页，版本1.5.0，自动检查与安装重启均已开启">
+
 ## 功能
 
 - 菜单栏显示可用卡片数量，圆角卡片展示剩余时间和到期日期。

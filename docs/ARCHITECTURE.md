@@ -1,6 +1,6 @@
 # 架构
 
-应用通过 `Process` 启动本机 `codex app-server`，以换行 JSON 交换请求。每轮刷新建立一条连接，执行 `initialize` / `initialized` 握手；带 `id` 的响应与请求匹配，异步通知不被误当成响应。
+应用通过 `Process` 启动本机 `codex app-server` 或发布包内置的独立 App Server，以换行 JSON 交换请求。每轮刷新建立一条连接，执行 `initialize` / `initialized` 握手；带 `id` 的响应与请求匹配，异步通知不被误当成响应。
 
 ```mermaid
 flowchart LR
@@ -33,3 +33,11 @@ flowchart LR
 调用 `account/rateLimitResetCredit/consume` 时显式传入 `creditId` 和 `idempotencyKey`。`reset` / `alreadyRedeemed` 为成功；`nothingToReset` 是一次明确未成功的尝试，后续新尝试可生成新键；不确定响应保留原键。
 
 当前运行结构与测试入口见 [开发指南](../DEVELOPMENT.md)。接口变更应核对[官方 App Server 文档](https://learn.chatgpt.com/docs/app-server)和已安装 CLI 生成的 schema，不能凭记忆扩展消费结果。
+
+## 分发、登录和更新
+
+发布包携带固定版本的官方后端，按当前 CPU 选择 `Contents/Resources/Codex/<arch>/bin/codex-app-server`。独立后端不传 CLI 的 `app-server` 子命令。账号登录由 `account/login/start` 发起，完成事件通过 JSONL 异步通知返回；浏览器只打开官方 HTTPS 域名。
+
+`src/Updates.swift` 接入 Sparkle。feed 由 GitHub Release 托管，ZIP 使用 EdDSA 签名。安装回调等待重置卡 RPC 和浏览器登录结束，最后两分钟优先处理卡片；重启前停止新一轮调度，失败时恢复监控。
+
+CI 在两个原生架构验证，CD 使用通用构建并通过草稿 Release 完整上传后公开。
